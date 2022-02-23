@@ -2,7 +2,7 @@
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-./build.sh
+#./build.sh
 
 docker volume create airogs_algorithm-output
 
@@ -16,6 +16,7 @@ docker run --rm \
         --pids-limit=256 \
         -v $SCRIPTPATH/test/:/input \
         -v airogs_algorithm-output:/output/ \
+        --gpus all \
         airogs_algorithm
 
 docker run --rm \
@@ -27,6 +28,7 @@ docker run --rm \
         --security-opt="no-new-privileges" \
         --shm-size=128m \
         --pids-limit=256 \
+        --gpus all \
         python:3.7-slim cat /output/multiple-referable-glaucoma-likelihoods.json /output/multiple-referable-glaucoma-binary.json /output/multiple-ungradability-scores.json /output/multiple-ungradability-binary.json
 
 docker run --rm \
@@ -39,6 +41,7 @@ docker run --rm \
         --security-opt="no-new-privileges" \
         --shm-size=128m \
         --pids-limit=256 \
+        --gpus all \
         python:3.7-slim python -c """import json, sys
 referable_glaucoma_likelihood = json.load(open('/output/multiple-referable-glaucoma-likelihoods.json'))
 referable_glaucoma_binary = json.load(open('/output/multiple-referable-glaucoma-binary.json'))

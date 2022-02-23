@@ -12,6 +12,7 @@ from evalutils.validators import (
     UniquePathIndicesValidator,
     UniqueImagesValidator,
 )
+from do_inference import do_inference, LightningClassifierInferer, Detector
 from evalutils.io import ImageLoader
 
 
@@ -43,6 +44,9 @@ class airogs_algorithm(ClassificationAlgorithm):
                             "multiple-referable-glaucoma-binary",
                             "multiple-ungradability-scores",
                             "multiple-ungradability-binary"]
+        
+        self.InferenceClassifier = LightningClassifierInferer()
+        self.InferenceDetector = Detector()
     
     def load(self):
         for key, file_loader in self._file_loaders.items():
@@ -90,13 +94,11 @@ class airogs_algorithm(ClassificationAlgorithm):
     def predict(self, *, input_image_array: np.ndarray) -> Dict:
         # From here, use the input_image to predict the output
         # We are using a not-so-smart algorithm to predict the output, you'll want to do your model inference here
-
-        # Replace starting here
-        rg_likelihood = ((input_image_array - input_image_array.min()) / (input_image_array.max() - input_image_array.min())).mean()
-        rg_binary = bool(rg_likelihood > .2)
-        ungradability_score = rg_likelihood * 15
-        ungradability_binary = bool(rg_likelihood < .2)
-        # to here with your inference algorithm
+        rg_likelihood, rg_binary, ungradability_score, ungradability_binary = do_inference(
+                                                                                input_image_array, 
+                                                                                Detector=self.InferenceDetector, 
+                                                                                Classifier=self.InferenceClassifier
+                                                                                )
 
         out = {
             "multiple-referable-glaucoma-likelihoods": rg_likelihood,

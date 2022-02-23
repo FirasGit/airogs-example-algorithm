@@ -2,7 +2,11 @@
 # TENSORFLOW (https://hub.docker.com/r/tensorflow/tensorflow/) 
 # or a PYTORCH (https://hub.docker.com/r/pytorch/pytorch/) base image
 
-FROM python:3.7-slim
+FROM pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime
+
+# Needed for opencv
+RUN apt-get update
+RUN apt-get install ffmpeg libsm6 libxext6  -y
 
 RUN groupadd -r algorithm && useradd -m --no-log-init -r -g algorithm algorithm
 
@@ -26,6 +30,17 @@ RUN python -m pip install --user -rrequirements.txt
 RUN python -m pip show imagecodecs
 
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
+COPY --chown=algorithm:algorithm do_inference.py /opt/algorithm/
+
+# TODO: For new version, change this
+# Copy network folder
+RUN mkdir /opt/algorithm/networks/
+COPY --chown=algorithm:algorithm ./networks/ /opt/algorithm/networks/
+
+RUN python -m pip install --user -r ./networks/requirements.txt
+
+RUN mkdir -p /home/algorithm/.config/Ultralytics/
+COPY --chown=algorithm:algorithm ./networks/detection/Arial.ttf /home/algorithm/.config/Ultralytics/
 
 # Copy additional files, such as model weights
 # e.g. `COPY --chown=algorithm:algorithm weights.pth /opt/algorithm/weights.pth`
