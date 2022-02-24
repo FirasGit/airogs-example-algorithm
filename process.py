@@ -94,7 +94,7 @@ class airogs_algorithm(ClassificationAlgorithm):
     def predict(self, *, input_image_array: np.ndarray) -> Dict:
         # From here, use the input_image to predict the output
         # We are using a not-so-smart algorithm to predict the output, you'll want to do your model inference here
-        rg_likelihood, rg_binary, ungradability_score, ungradability_binary = do_inference(
+        rg_likelihood, rg_binary, ungradability_score, ungradability_binary, _ = do_inference(
                                                                                 input_image_array, 
                                                                                 Detector=self.InferenceDetector, 
                                                                                 Classifier=self.InferenceClassifier

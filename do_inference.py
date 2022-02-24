@@ -50,7 +50,11 @@ class LightningClassifier(pl.LightningModule):
 class LightningClassifierInferer(nn.Module):
     def __init__(self):
         super().__init__()
-        checkpoint_path_fold_0 = './networks/classification/epoch=69_Val_epoch_loss=0.523_Val_partial_auc=0.919.ckpt'
+        checkpoint_path_fold_0 = './networks/classification/epoch=66_Val_epoch_loss=0.434_Val_partial_auc=0.930.ckpt'
+        checkpoint_path_fold_1 = './networks/classification/epoch=81_Val_epoch_loss=0.438_Val_partial_auc=0.925.ckpt'
+        checkpoint_path_fold_2 = './networks/classification/epoch=76_Val_epoch_loss=0.454_Val_partial_auc=0.930.ckpt'
+        checkpoint_path_fold_3 = './networks/classification/epoch=41_Val_epoch_loss=0.417_Val_partial_auc=0.926.ckpt'
+        checkpoint_path_fold_4 = './networks/classification/epoch=69_Val_epoch_loss=0.523_Val_partial_auc=0.919.ckpt'
         torch.set_grad_enabled(False) # Don't generate a computational graph
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -59,7 +63,26 @@ class LightningClassifierInferer(nn.Module):
         model_fold_0 = LightningClassifier().load_from_checkpoint(checkpoint_path=checkpoint_path_fold_0)
         model_fold_0.eval()
         model_fold_0.to(self.device)
-        self.model_folds = nn.ModuleList([model_fold_0])
+        
+        model_fold_1 = LightningClassifier().load_from_checkpoint(checkpoint_path=checkpoint_path_fold_1)
+        model_fold_1.eval()
+        model_fold_1.to(self.device)
+
+
+        model_fold_2 = LightningClassifier().load_from_checkpoint(checkpoint_path=checkpoint_path_fold_2)
+        model_fold_2.eval()
+        model_fold_2.to(self.device)
+
+        model_fold_3 = LightningClassifier().load_from_checkpoint(checkpoint_path=checkpoint_path_fold_3)
+        model_fold_3.eval()
+        model_fold_3.to(self.device)
+
+        model_fold_4 = LightningClassifier().load_from_checkpoint(checkpoint_path=checkpoint_path_fold_4)
+        model_fold_4.eval()
+        model_fold_4.to(self.device)
+
+
+        self.model_folds = nn.ModuleList([model_fold_0, model_fold_1, model_fold_2, model_fold_3, model_fold_4])
 
         self.preprocessing = A.Compose([
             MinMaxBrightness(always_apply=True),
@@ -76,7 +99,7 @@ class LightningClassifierInferer(nn.Module):
 
 
 		# TODO: Find a better cut-off point, e.g. Youden's Index?
-        self.prediction_cut_off = 0.5
+        self.prediction_cut_off = 0.63
     
     def preprocess(self, image):
         return self.preprocessing(image=image)['image']
@@ -107,6 +130,7 @@ class LightningClassifierInferer(nn.Module):
     def forward(self, image, tta=True, num_tta_transforms=5):
         prep_image = self.preprocess(image)
         predictions_all_folds = []
+        predictions_all_folds_all_tta = []
         for fold in self.model_folds:
             if tta:
                 predictions_tta = []
@@ -114,14 +138,17 @@ class LightningClassifierInferer(nn.Module):
                     tta_prep_image = self.transform(prep_image)
                     prediction_tta = self.get_prediction(model=fold, image=tta_prep_image)
                     predictions_tta.append(prediction_tta)
+                predictions_all_folds_all_tta.extend(predictions_tta)
                 prediction_fold = np.mean(predictions_tta)
             else:
                 prep_image_tensor = self.convert_to_tensor(prep_image)
                 prediction_fold = self.get_prediction(model=fold, image=prep_image_tensor)
+                predictions_all_folds_all_tta.append(prediction_fold)
             predictions_all_folds.append(prediction_fold)
         prediction = np.mean(predictions_all_folds)
         label = self.get_label(prediction)
-        return prediction, label
+        variance = np.var(predictions_all_folds_all_tta)
+        return prediction, label, variance
 
 
 class Detector(nn.Module):
@@ -172,21 +199,23 @@ def do_inference(input_image_array: np.ndarray, Detector: Detector, Classifier: 
     """
     cropped_img, confidence_score = Detector(image=input_image_array)
     if cropped_img is not None:
-        rg_likelihood, rg_binary = Classifier(cropped_img)
+        rg_likelihood, rg_binary, rg_variance = Classifier(cropped_img)
     else:
         # No prediction possible, however it's more likely to be NRG (due to more cases)
-        rg_likelihood, rg_binary = 0, False
+        # TODO: When using variance, make sure that when no cropped image is available it cannot be used (as it is
+        # not created)
+        rg_likelihood, rg_binary, rg_variance = 0, False, 1e9
 
     # TODO: Find some better metric
-    ungradability_score = confidence_score
+    ungradability_score = 1 - confidence_score
 
     # TODO: Find an appropriate cut-off
-    cut_off = 0.1
+    cut_off = 0.9
     if ungradability_score <= cut_off:
         ungradability_binary = False
     else: 
         ungradability_binary = True
     
-    return rg_likelihood, rg_binary, ungradability_score, ungradability_binary 
+    return rg_likelihood, rg_binary, ungradability_score, ungradability_binary, rg_variance
 
     
