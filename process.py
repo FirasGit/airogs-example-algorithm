@@ -12,7 +12,7 @@ from evalutils.validators import (
     UniquePathIndicesValidator,
     UniqueImagesValidator,
 )
-from do_inference import do_inference, LightningClassifierInferer, Detector
+from do_inference import do_inference, LightningClassifierInferer, Detector, AnomalyDetectorFlow
 from evalutils.io import ImageLoader
 
 
@@ -20,7 +20,6 @@ class DummyLoader(ImageLoader):
     @staticmethod
     def load_image(fname):
         return str(fname)
-
 
     @staticmethod
     def hash_image(image):
@@ -40,14 +39,15 @@ class airogs_algorithm(ClassificationAlgorithm):
 
         self._file_loaders = dict(input_image=DummyLoader())
 
-        self.output_keys = ["multiple-referable-glaucoma-likelihoods", 
+        self.output_keys = ["multiple-referable-glaucoma-likelihoods",
                             "multiple-referable-glaucoma-binary",
                             "multiple-ungradability-scores",
                             "multiple-ungradability-binary"]
-        
+
         self.InferenceClassifier = LightningClassifierInferer()
         self.InferenceDetector = Detector()
-    
+        self.InferenceAnomalyDetectorFlow = AnomalyDetectorFlow()
+
     def load(self):
         for key, file_loader in self._file_loaders.items():
             fltr = (
@@ -60,7 +60,7 @@ class airogs_algorithm(ClassificationAlgorithm):
             )
 
         pass
-    
+
     def combine_dicts(self, dicts):
         out = {}
         for d in dicts:
@@ -69,7 +69,7 @@ class airogs_algorithm(ClassificationAlgorithm):
                     out[k] = []
                 out[k].append(v)
         return out
-    
+
     def process_case(self, *, idx, case):
         # Load and test the image(s) for this case
         if case.path.suffix == '.tiff':
@@ -77,12 +77,13 @@ class airogs_algorithm(ClassificationAlgorithm):
             with tifffile.TiffFile(case.path) as stack:
                 for page in tqdm.tqdm(stack.pages):
                     input_image_array = page.asarray()
-                    results.append(self.predict(input_image_array=input_image_array))
+                    results.append(self.predict(
+                        input_image_array=input_image_array))
         else:
             input_image = SimpleITK.ReadImage(str(case.path))
             input_image_array = SimpleITK.GetArrayFromImage(input_image)
             results = [self.predict(input_image_array=input_image_array)]
-        
+
         results = self.combine_dicts(results)
 
         # Test classification output
@@ -94,11 +95,12 @@ class airogs_algorithm(ClassificationAlgorithm):
     def predict(self, *, input_image_array: np.ndarray) -> Dict:
         # From here, use the input_image to predict the output
         # We are using a not-so-smart algorithm to predict the output, you'll want to do your model inference here
-        rg_likelihood, rg_binary, ungradability_score, ungradability_binary, _ = do_inference(
-                                                                                input_image_array, 
-                                                                                Detector=self.InferenceDetector, 
-                                                                                Classifier=self.InferenceClassifier
-                                                                                )
+        rg_likelihood, rg_binary, ungradability_score, ungradability_binary, *_ = do_inference(
+            input_image_array,
+            Detector=self.InferenceDetector,
+            Classifier=self.InferenceClassifier,
+            AnomalyDetector=self.InferenceAnomalyDetectorFlow
+        )
 
         out = {
             "multiple-referable-glaucoma-likelihoods": rg_likelihood,

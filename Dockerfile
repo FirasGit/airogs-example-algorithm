@@ -7,6 +7,7 @@ FROM pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime
 # Needed for opencv
 RUN apt-get update
 RUN apt-get install ffmpeg libsm6 libxext6  -y
+RUN apt-get install -y git
 
 RUN groupadd -r algorithm && useradd -m --no-log-init -r -g algorithm algorithm
 
@@ -39,8 +40,18 @@ COPY --chown=algorithm:algorithm ./networks/ /opt/algorithm/networks/
 
 RUN python -m pip install --user -r ./networks/requirements.txt
 
+# Needed for Flow
+RUN python -m pip install --user git+https://github.com/VLL-HD/FrEIA.git
+
 RUN mkdir -p /home/algorithm/.config/Ultralytics/
 COPY --chown=algorithm:algorithm ./networks/detection/Arial.ttf /home/algorithm/.config/Ultralytics/
+
+# Needed for Olis Method
+RUN mkdir -p /home/algorithm/.cache/torch/hub/checkpoints
+COPY --chown=algorithm:algorithm ./networks/anomaly_detection/efficientnet-b4-6ed6700e.pth /home/algorithm/.cache/torch/hub/checkpoints/
+
+# Needed for Flow Method
+COPY --chown=algorithm:algorithm ./networks/anomaly_detection_flow/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth /home/algorithm/.cache/torch/hub/checkpoints/
 
 # Copy additional files, such as model weights
 # e.g. `COPY --chown=algorithm:algorithm weights.pth /opt/algorithm/weights.pth`

@@ -1,5 +1,5 @@
 from functools import partial
-from do_inference import Detector, LightningClassifierInferer, do_inference, AnomalyDetectorFlow
+from do_inference import Detector, LightningClassifierInferer, do_inference, LightningFlowModel
 import os
 from PIL import Image
 from tqdm import tqdm
@@ -8,6 +8,8 @@ from sklearn import metrics
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+
+FOLD = 1
 
 
 def partial_roc_auc_score(y_true, y_pred):
@@ -51,7 +53,7 @@ def screening_sens_at_spec(y_true, y_pred):
 
 
 path_to_data = '/home/firas/Desktop/work/fundus/data/AIROGS/unzipped/'
-path_to_eval_folder = '/home/firas/Desktop/work/fundus/evaluation_outputs/submission/version_4_3_daniel/'
+path_to_eval_folder = '/home/firas/Desktop/work/fundus/evaluation_outputs/submission/version_4_test_new_detect'
 
 
 def create_dir(path):
@@ -62,22 +64,23 @@ def create_dir(path):
 if __name__ == '__main__':
     detector = Detector()
     classifier = LightningClassifierInferer()
-    anomaly_detector = AnomalyDetectorFlow()
-    labels = pd.read_csv(os.path.join(
-        path_to_data, 'train_labels.csv'), index_col='challenge_id')
+    anomaly_detector = LightningFlowModel()
+    labels = pd.read_csv(os.path.join(path_to_data, 'final_classification_test',
+                         f'cls_test_labels.csv'), index_col='challenge_id')
 
     create_dir(path_to_eval_folder)
-    results = {'name': [], 'label': [], 'rg_likelihood': [], 'rg_binary': [], 'ungradability_score': [
-    ], 'ungradability_binary': [], 'rg_variance': [], 'ungradability_score_confidence': [], 'anomaly_score': [], 'ungradability_classifier_likelihood': []}
-    for img in tqdm([file for file in os.listdir(path_to_data) if file.endswith('.jpg')][:]):
+    results = {'name': [], 'label': [], 'rg_likelihood': [], 'rg_binary': [
+    ], 'ungradability_score': [], 'ungradability_binary': [], 'rg_variance': [], 'ungradability_score_confidence': [], 'anomaly_score': []
+    }
+    for img in tqdm([id + '.jpg' for id in labels.index.tolist()]):
         sample_img = np.asarray(Image.open(os.path.join(path_to_data, img)))
         label = labels.loc[img.split('.')[0]]['class']
         label = 1 if label == 'RG' else 0
-        rg_likelihood, rg_binary, ungradability_score, ungradability_binary, rg_variance, ungradability_score_confidence, anomaly_score, ungradability_classifier_likelihood = do_inference(
+        rg_likelihood, rg_binary, ungradability_score, ungradability_binary, rg_variance, ungradability_score_confidence, anomaly_score = do_inference(
             input_image_array=sample_img,
             Detector=detector,
             Classifier=classifier,
-            AnomalyDetector=anomaly_detector,
+            AnomalyDetector=anomaly_detector
         )
         results['name'].append(img)
         results['label'].append(label)
@@ -89,8 +92,6 @@ if __name__ == '__main__':
         results['ungradability_score_confidence'].append(
             ungradability_score_confidence)
         results['anomaly_score'].append(anomaly_score)
-        results['ungradability_classifier_likelihood'].append(
-            ungradability_classifier_likelihood)
     df_results = pd.DataFrame(results)
     df_results.to_csv(os.path.join(
         path_to_eval_folder, 'results.csv'), index=False)
@@ -123,21 +124,17 @@ if __name__ == '__main__':
     print('Optimal Threshold: ', optimal_threshold)
 
     occurence_frequency = []
-    range_min = df_results['ungradability_score'].min()
-    range_max = df_results['ungradability_score'].max()
-    step_size = (range_max - range_min) / 20
-    for lower_bound, upper_bound in tqdm(zip(list(np.arange(range_min, range_max, step_size)), list(np.arange(range_min + step_size, range_max + step_size, step_size)))):
+    for lower_bound, upper_bound in tqdm(zip(list(np.arange(0, 1.0, 0.1)), list(np.arange(0.1, 1.1, 0.1)))):
         bounded_results = df_results[df_results['ungradability_score'].between(
             lower_bound, upper_bound)]
         occurence_frequency.append(len(bounded_results))
-        bounded_results_head = bounded_results.head(50)
+        bounded_results_head = bounded_results.head(100)
         path = os.path.join(path_to_eval_folder,
                             f'{round(lower_bound, 2)}-{round(upper_bound, 2)}')
         create_dir(path)
         for img_name, ungradability_score in zip(bounded_results_head['name'], bounded_results_head['ungradability_score']):
             img = Image.open(os.path.join(path_to_data, img_name))
             img.save(os.path.join(path, str(ungradability_score) + img_name))
-    range_ = list(np.arange(range_min + step_size,
-                  range_max + step_size, step_size))
-    plt.bar(range_, occurence_frequency, width=2)
+    range_ = list(np.arange(0.1, 1.1, 0.1))
+    plt.bar(range_, occurence_frequency, width=0.05)
     plt.savefig(os.path.join(path_to_eval_folder, 'occurence_histogram.png'))
