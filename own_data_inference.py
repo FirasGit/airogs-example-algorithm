@@ -51,7 +51,7 @@ def screening_sens_at_spec(y_true, y_pred):
 
 
 path_to_data = '/home/firas/Desktop/work/fundus/data/AIROGS/unzipped/'
-path_to_eval_folder = '/home/firas/Desktop/work/fundus/evaluation_outputs/submission/version_4_3_daniel/'
+path_to_eval_folder = '/home/firas/Desktop/work/fundus/evaluation_outputs/submission/version_4_6_check/'
 
 
 def create_dir(path):
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     create_dir(path_to_eval_folder)
     results = {'name': [], 'label': [], 'rg_likelihood': [], 'rg_binary': [], 'ungradability_score': [
     ], 'ungradability_binary': [], 'rg_variance': [], 'ungradability_score_confidence': [], 'anomaly_score': [], 'ungradability_classifier_likelihood': []}
-    for img in tqdm([file for file in os.listdir(path_to_data) if file.endswith('.jpg')][:]):
+    for img in tqdm([file for file in os.listdir(path_to_data) if file.endswith('.jpg')][:3000]):
         sample_img = np.asarray(Image.open(os.path.join(path_to_data, img)))
         label = labels.loc[img.split('.')[0]]['class']
         label = 1 if label == 'RG' else 0
@@ -139,5 +139,5 @@ if __name__ == '__main__':
             img.save(os.path.join(path, str(ungradability_score) + img_name))
     range_ = list(np.arange(range_min + step_size,
                   range_max + step_size, step_size))
-    plt.bar(range_, occurence_frequency, width=2)
+    plt.bar(range_, occurence_frequency, width=0.1)
     plt.savefig(os.path.join(path_to_eval_folder, 'occurence_histogram.png'))

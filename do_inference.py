@@ -46,12 +46,12 @@ class MinMaxBrightness(ImageOnlyTransform):
 
 
 class LightningClassifier(pl.LightningModule):
-    def __init__(self, use_v1 = False):
+    def __init__(self, use_v1 = False, model_type='tf_efficientnetv2_m'):
         super().__init__()
         if use_v1:
             self.model = EfficientNet.from_name('efficientnet-b4', override_params={'num_classes': 1})
         else: 
-            self.model = timm.create_model('tf_efficientnetv2_m', pretrained=False, num_classes=1, in_chans=3)
+            self.model = timm.create_model(model_type, pretrained=False, num_classes=1, in_chans=3)
         self.model.eval()
     def forward(self, image):
         return self.model(image)
@@ -72,7 +72,19 @@ class LightningClassifierInferer(nn.Module):
         checkpoint_path_effv1_fold_3 = './networks/classification/epoch=45_Val_epoch_loss=0.122_Val_partial_auc=0.914.ckpt'
         checkpoint_path_effv1_fold_4 = './networks/classification/epoch=70_Val_epoch_loss=0.124_Val_partial_auc=0.919.ckpt'
 
-        checkpoint_path_ungradability = './networks/classification/ungradability/epoch=183_Val_epoch_loss=0.152_Val_partial_auc=0.962.ckpt'
+        checkpoint_path_swin_fold_0 = './networks/classification/swin/epoch=03_Val_epoch_loss=0.078_Val_partial_auc=0.935.ckpt'
+        checkpoint_path_swin_fold_1 = './networks/classification/swin/epoch=04_Val_epoch_loss=0.108_Val_partial_auc=0.939.ckpt'
+        checkpoint_path_swin_fold_2 = './networks/classification/swin/epoch=05_Val_epoch_loss=0.065_Val_partial_auc=0.942.ckpt'
+        checkpoint_path_swin_fold_3 = './networks/classification/swin/epoch=05_Val_epoch_loss=0.098_Val_partial_auc=0.931.ckpt'
+        checkpoint_path_swin_fold_4 = './networks/classification/swin/epoch=08_Val_epoch_loss=0.073_Val_partial_auc=0.946.ckpt'
+
+        checkpoint_path_deit_fold_0 = './networks/classification/deit/epoch=02_Val_epoch_loss=0.079_Val_partial_auc=0.923.ckpt'
+        checkpoint_path_deit_fold_1 = './networks/classification/deit/epoch=02_Val_epoch_loss=0.102_Val_partial_auc=0.917.ckpt'
+        checkpoint_path_deit_fold_2 = './networks/classification/deit/epoch=02_Val_epoch_loss=0.107_Val_partial_auc=0.914.ckpt'
+        checkpoint_path_deit_fold_3 = './networks/classification/deit/epoch=04_Val_epoch_loss=0.104_Val_partial_auc=0.928.ckpt'
+        checkpoint_path_deit_fold_4 = './networks/classification/deit/epoch=05_Val_epoch_loss=0.081_Val_partial_auc=0.924.ckpt'
+
+        checkpoint_path_ungradability = './networks/classification/ungradability/epoch=78_Val_epoch_loss=0.134_Val_partial_auc=0.939.ckpt'
         
         torch.set_grad_enabled(False) # Don't generate a computational graph
 
@@ -102,6 +114,54 @@ class LightningClassifierInferer(nn.Module):
 
         normal_folds = [model_fold_0, model_fold_1, model_fold_2, model_fold_3, model_fold_4]
 
+        # Swin
+        model_fold_0_swin = LightningClassifier(model_type='swin_base_patch4_window7_224').load_from_checkpoint(checkpoint_path=checkpoint_path_swin_fold_0, model_type='swin_base_patch4_window7_224')
+        model_fold_0_swin.eval()
+        model_fold_0_swin.to(self.device)
+        
+        model_fold_1_swin = LightningClassifier(model_type='swin_base_patch4_window7_224').load_from_checkpoint(checkpoint_path=checkpoint_path_swin_fold_1, model_type='swin_base_patch4_window7_224')
+        model_fold_1_swin.eval()
+        model_fold_1_swin.to(self.device)
+
+
+        model_fold_2_swin = LightningClassifier(model_type='swin_base_patch4_window7_224').load_from_checkpoint(checkpoint_path=checkpoint_path_swin_fold_2, model_type='swin_base_patch4_window7_224')
+        model_fold_2_swin.eval()
+        model_fold_2_swin.to(self.device)
+
+        model_fold_3_swin = LightningClassifier(model_type='swin_base_patch4_window7_224').load_from_checkpoint(checkpoint_path=checkpoint_path_swin_fold_3, model_type='swin_base_patch4_window7_224')
+        model_fold_3_swin.eval()
+        model_fold_3_swin.to(self.device)
+
+        model_fold_4_swin = LightningClassifier(model_type='swin_base_patch4_window7_224').load_from_checkpoint(checkpoint_path=checkpoint_path_swin_fold_4, model_type='swin_base_patch4_window7_224')
+        model_fold_4_swin.eval()
+        model_fold_4_swin.to(self.device)
+
+        swin_folds = [model_fold_0_swin, model_fold_1_swin, model_fold_2_swin, model_fold_3_swin, model_fold_4_swin]
+
+        # Deit
+        model_fold_0_deit = LightningClassifier(model_type='deit_small_patch16_224').load_from_checkpoint(checkpoint_path=checkpoint_path_deit_fold_0, model_type='deit_small_patch16_224')
+        model_fold_0_deit.eval()
+        model_fold_0_deit.to(self.device)
+        
+        model_fold_1_deit = LightningClassifier(model_type='deit_small_patch16_224').load_from_checkpoint(checkpoint_path=checkpoint_path_deit_fold_1, model_type='deit_small_patch16_224')
+        model_fold_1_deit.eval()
+        model_fold_1_deit.to(self.device)
+
+
+        model_fold_2_deit = LightningClassifier(model_type='deit_small_patch16_224').load_from_checkpoint(checkpoint_path=checkpoint_path_deit_fold_2, model_type='deit_small_patch16_224')
+        model_fold_2_deit.eval()
+        model_fold_2_deit.to(self.device)
+
+        model_fold_3_deit = LightningClassifier(model_type='deit_small_patch16_224').load_from_checkpoint(checkpoint_path=checkpoint_path_deit_fold_3, model_type='deit_small_patch16_224')
+        model_fold_3_deit.eval()
+        model_fold_3_deit.to(self.device)
+
+        model_fold_4_deit = LightningClassifier(model_type='deit_small_patch16_224').load_from_checkpoint(checkpoint_path=checkpoint_path_deit_fold_4, model_type='deit_small_patch16_224')
+        model_fold_4_deit.eval()
+        model_fold_4_deit.to(self.device)
+
+        deit_folds = [model_fold_0_deit, model_fold_1_deit, model_fold_2_deit, model_fold_3_deit, model_fold_4_deit]
+
         # Use EfficientNetV1
         model_v1_fold_0 = LightningClassifier(use_v1=True).load_from_checkpoint(checkpoint_path=checkpoint_path_effv1_fold_0, use_v1=True)
         model_v1_fold_0.eval()
@@ -123,13 +183,13 @@ class LightningClassifierInferer(nn.Module):
         model_v1_fold_4.eval()
         model_v1_fold_4.to(self.device)
 
+        v1_folds = [model_v1_fold_0, model_v1_fold_1, model_v1_fold_2, model_v1_fold_3, model_v1_fold_4]
+
         self.model_ungradability = LightningClassifier(use_v1=True).load_from_checkpoint(checkpoint_path=checkpoint_path_ungradability, use_v1=True)
         self.model_ungradability.eval()
         self.model_ungradability.to(self.device)
 
-        v1_folds = [model_v1_fold_0, model_v1_fold_1, model_v1_fold_2, model_v1_fold_3, model_v1_fold_4]
-
-        self.model_folds = nn.ModuleList(normal_folds + v1_folds)
+        self.model_folds = nn.ModuleList(normal_folds + v1_folds + swin_folds + deit_folds)
 
         self.preprocessing = A.Compose([
             MinMaxBrightness(always_apply=True),
@@ -317,7 +377,7 @@ def do_inference(input_image_array: np.ndarray, Detector: Detector, Classifier: 
     """
     cropped_img, confidence_score = Detector(image=input_image_array)
     if cropped_img is not None:
-        rg_likelihood, rg_binary, rg_variance, ungradability_classifier_likelihood = Classifier(cropped_img)
+        rg_likelihood, rg_binary, rg_variance, ungradability_classifier_likelihood = Classifier(cropped_img, tta=False)
         anomaly_score = AnomalyDetector(cropped_img)
     else:
         # No prediction possible, however it's more likely to be NRG (due to more cases)
@@ -328,10 +388,10 @@ def do_inference(input_image_array: np.ndarray, Detector: Detector, Classifier: 
     # TODO: Find some better metric
     ungradability_score_confidence = 1 - confidence_score
 
-    ungradability_score = ungradability_score_confidence + anomaly_score + ungradability_classifier_likelihood
+    ungradability_score = ungradability_score_confidence + ungradability_classifier_likelihood #+ anomaly_score 
 
     # TODO: Find an appropriate cut-off
-    cut_off = 2.25
+    cut_off = 1
     if ungradability_score <= cut_off:
         ungradability_binary = False
     else: 
